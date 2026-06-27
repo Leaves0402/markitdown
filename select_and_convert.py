@@ -17,16 +17,16 @@ FILE_TYPES = [
     ("All files", "*.*"),
 ]
 
-def make_unique_output_path(output_dir, stem):
+def make_unique_output_path(output_dir, stem, suffix):
     """
     避免同名檔案被覆蓋。
-    例如 paper.md 已存在，就輸出 paper_1.md、paper_2.md。
+    例如 paper.txt 已存在，就輸出 paper_1.txt、paper_2.txt。
     """
-    output_path = output_dir / f"{stem}.md"
+    output_path = output_dir / f"{stem}{suffix}"
     counter = 1
 
     while output_path.exists():
-        output_path = output_dir / f"{stem}_{counter}.md"
+        output_path = output_dir / f"{stem}_{counter}{suffix}"
         counter += 1
 
     return output_path
@@ -50,11 +50,13 @@ def main():
 
     for input_file in input_files:
         input_path = Path(input_file)
-        output_path = make_unique_output_path(OUTPUT_DIR, input_path.stem)
+
+        # 直接輸出成 txt，不產生 md
+        txt_output_path = make_unique_output_path(OUTPUT_DIR, input_path.stem, ".txt")
 
         try:
             subprocess.run(
-                ["markitdown", str(input_path), "-o", str(output_path)],
+                ["markitdown", str(input_path), "-o", str(txt_output_path)],
                 check=True
             )
             success_count += 1
@@ -63,6 +65,7 @@ def main():
             failed_files.append(str(input_path))
 
     result_message = f"成功轉換 {success_count} 個檔案。\n\n輸出資料夾：\n{OUTPUT_DIR}"
+    result_message += "\n\n已直接輸出成 .txt，可直接丟給 ChatGPT。"
 
     if failed_files:
         result_message += "\n\n以下檔案轉換失敗：\n"
