@@ -17,43 +17,61 @@ FILE_TYPES = [
     ("All files", "*.*"),
 ]
 
+def make_unique_output_path(output_dir, stem):
+    """
+    避免同名檔案被覆蓋。
+    例如 paper.md 已存在，就輸出 paper_1.md、paper_2.md。
+    """
+    output_path = output_dir / f"{stem}.md"
+    counter = 1
+
+    while output_path.exists():
+        output_path = output_dir / f"{stem}_{counter}.md"
+        counter += 1
+
+    return output_path
+
 def main():
     root = tk.Tk()
     root.withdraw()
 
-    input_file = filedialog.askopenfilename(
-        title="選擇要轉換的檔案",
+    input_files = filedialog.askopenfilenames(
+        title="選擇要轉換的檔案，可一次選多個",
         filetypes=FILE_TYPES
     )
 
-    if not input_file:
+    if not input_files:
         return
-
-    input_path = Path(input_file)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    output_path = OUTPUT_DIR / f"{input_path.stem}.md"
+    success_count = 0
+    failed_files = []
 
-    try:
-        subprocess.run(
-            ["markitdown", str(input_path), "-o", str(output_path)],
-            check=True
-        )
+    for input_file in input_files:
+        input_path = Path(input_file)
+        output_path = make_unique_output_path(OUTPUT_DIR, input_path.stem)
 
-        messagebox.showinfo(
-            "轉換完成",
-            f"已輸出到：\n{output_path}"
-        )
+        try:
+            subprocess.run(
+                ["markitdown", str(input_path), "-o", str(output_path)],
+                check=True
+            )
+            success_count += 1
 
-        # 自動用 VS Code 打開結果
-        subprocess.run(["code", str(output_path)], check=False)
+        except subprocess.CalledProcessError:
+            failed_files.append(str(input_path))
 
-    except subprocess.CalledProcessError as e:
-        messagebox.showerror(
-            "轉換失敗",
-            f"MarkItDown 執行失敗。\n\n錯誤：{e}"
-        )
+    result_message = f"成功轉換 {success_count} 個檔案。\n\n輸出資料夾：\n{OUTPUT_DIR}"
+
+    if failed_files:
+        result_message += "\n\n以下檔案轉換失敗：\n"
+        result_message += "\n".join(failed_files)
+
+    messagebox.showinfo("批次轉換完成", result_message)
+
+    # 自動打開輸出資料夾
+    subprocess.run(["explorer", str(OUTPUT_DIR)], check=False)
 
 if __name__ == "__main__":
     main()
